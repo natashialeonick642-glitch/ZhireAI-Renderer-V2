@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "product_id": "zhireai.c4d.renderer",
-  "version": "2.0.7-native-prompt-editor-20260909",
+  "version": "2.0.7-banana-diagnostics-20260909",
   "algorithm": "SHA-256",
   "sha256": {
     "安装说明-Windows.txt": "dd04b802c6f1472e1e01b22a91b31c4032e2b0edcb63ea30e4f45abedbe2e106",
@@ -27,7 +27,7 @@
     "presets/openai-compatible.json": "31f9bf75f1671107ccad02730b0e96335dd40b94216d4045337c82dc04cd06fa",
     "presets/volcengine.json": "8150f40ee952d84ac08cde59c17718256ac724e25d27a1198eede30f76c9599b",
     "README_zh-CN.md": "000abf5deaddb1fa4f9e52c171c65c611738002a3186935c12dac8645bc708dd",
-    "zz_juaihub_adapter.pyp": "ffd653b1c66f32a28b7b3a5b226329fe0d42046b41f443accc824689b9d921b1",
+    "zz_juaihub_adapter.pyp": "a870657e8b9e2db1b49bf765a96d8ed9a78061901a530489d3566c904c661d99",
     "prompt_skills/不锈钢质感优化.md": "27f4df545cf87223fb616da3882babe0edc5061920e98ba87532ea138e1cdfc6",
     "prompt_skills/木质产品真实摄影优化V20.md": "660d2b04b231b516976a25f088d25497f86983c45854de5a9caa2d198c57b7a2",
     "zzz_zhire_geometry_capture.pyp": "1697c0c64fdf8ebdb63f1a5ff607a21997a3e8878cf0a58eb04cf3b9eb20a640"

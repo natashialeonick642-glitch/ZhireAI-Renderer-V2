@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import http.client
 import json
 import mimetypes
 import os
@@ -45,14 +46,17 @@ IMAGE25_MODELS = {
 }
 SUPPORTED_MODELS = BANANA_MODELS | {IMAGE2_MODEL} | IMAGE25_MODELS
 MAX_INPUT_BYTES = 20 * 1024 * 1024
+MAX_RESPONSE_BYTES = 100 * 1024 * 1024
 
 
-def _write_route_diagnostic(
+def _write_diagnostic(
     client: _api.ImageApiClient,
-    model: str,
-    endpoint: str,
+    stage: str,
+    model: str = "",
+    endpoint: str = "",
+    detail: str = "",
 ) -> None:
-    """Append routing metadata without prompts, image paths, or credentials."""
+    """Append request stages without prompts, image paths, or credentials."""
 
     output_dir = client.output_dir
     if output_dir is None:
@@ -65,11 +69,13 @@ def _write_route_diagnostic(
         )
         with path.open("a", encoding="utf-8") as handle:
             handle.write(
-                "{} host={} model={} endpoint={}\n".format(
+                "{} stage={} host={} model={} endpoint={}{}\n".format(
                     time.strftime("%Y-%m-%d %H:%M:%S"),
+                    stage,
                     host,
                     model,
                     endpoint,
+                    " " + detail if detail else "",
                 )
             )
     except OSError:
@@ -283,6 +289,8 @@ def _request_json(
     endpoint: str,
     body: bytes,
     content_type: str,
+    model: str = "",
+    should_cancel: Optional[Callable[[], bool]] = None,
 ) -> Any:
     base_url = str(client.settings.get("base_url") or "").rstrip("/")
     # The Gemini-compatible route is rooted at /v1beta, while Image2 uses
@@ -297,13 +305,61 @@ def _request_json(
         method="POST",
     )
     timeout = max(60.0, float(client.settings.get("timeout_seconds") or 900))
+    started = time.monotonic()
+    _api._check_cancel(should_cancel)
+    _write_diagnostic(
+        client,
+        "request_started",
+        model,
+        endpoint,
+        "request_bytes={} timeout_seconds={}".format(len(body), int(timeout)),
+    )
     try:
         with urllib.request.urlopen(
             request, timeout=timeout, context=ssl.create_default_context()
         ) as response:
-            raw = response.read()
+            status = int(getattr(response, "status", 200))
+            _write_diagnostic(
+                client,
+                "response_headers",
+                model,
+                endpoint,
+                "status={} elapsed_ms={}".format(
+                    status, int((time.monotonic() - started) * 1000)
+                ),
+            )
+            chunks: list[bytes] = []
+            total = 0
+            while True:
+                _api._check_cancel(should_cancel)
+                chunk = response.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_RESPONSE_BYTES:
+                    raise _api.ApiError("JuAIHub 返回的数据超过 100MB，已停止读取。")
+                chunks.append(chunk)
+            raw = b"".join(chunks)
+            _write_diagnostic(
+                client,
+                "response_complete",
+                model,
+                endpoint,
+                "status={} response_bytes={} elapsed_ms={}".format(
+                    status, len(raw), int((time.monotonic() - started) * 1000)
+                ),
+            )
     except urllib.error.HTTPError as exc:
-        raw = exc.read()
+        raw = exc.read(64 * 1024)
+        _write_diagnostic(
+            client,
+            "http_error",
+            model,
+            endpoint,
+            "status={} response_bytes={} elapsed_ms={}".format(
+                exc.code, len(raw), int((time.monotonic() - started) * 1000)
+            ),
+        )
         try:
             data = json.loads(raw.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
@@ -313,9 +369,33 @@ def _request_json(
             message = "API Key 无效或已过期。"
         elif exc.code == 402:
             message = "JuAIHub 当前 API Key 的模型积分不足。"
+        elif exc.code in (502, 503, 504):
+            message = (
+                "JuAIHub 网关未在规定时间内返回结果。请求可能已经到达上游，"
+                "请先在平台后台确认任务和扣费记录，不要立即重复提交。"
+            )
         raise _api.ApiError("JuAIHub 请求失败（HTTP {}）：{}".format(exc.code, message)) from exc
-    except (urllib.error.URLError, TimeoutError, socket.timeout) as exc:
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        socket.timeout,
+        http.client.IncompleteRead,
+        http.client.RemoteDisconnected,
+        ConnectionResetError,
+        ConnectionAbortedError,
+        BrokenPipeError,
+    ) as exc:
+        _write_diagnostic(
+            client,
+            "transport_error",
+            model,
+            endpoint,
+            "error_type={} elapsed_ms={}".format(
+                type(exc).__name__, int((time.monotonic() - started) * 1000)
+            ),
+        )
         raise _api.ApiError("连接 JuAIHub 失败或等待生成超时：{}".format(exc)) from exc
+    _api._check_cancel(should_cancel)
     try:
         data = json.loads(raw.decode("utf-8"))
     except (ValueError, UnicodeDecodeError) as exc:
@@ -356,13 +436,17 @@ def _gemini_request(
     width: int,
     height: int,
     quality: str,
+    should_cancel: Optional[Callable[[], bool]] = None,
 ) -> Any:
     """Send Banana models with the DUMIK v0.1.6 Gemini-native contract."""
     quality = str(quality or "2K").upper()
     if quality not in {"1K", "2K", "4K"}:
         quality = "2K"
+    encode_started = time.monotonic()
     parts: list[dict[str, Any]] = [{"text": prompt}]
-    parts.extend(_gemini_inline_data(path) for path in paths)
+    for path in paths:
+        _api._check_cancel(should_cancel)
+        parts.append(_gemini_inline_data(path))
     payload = {
         "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {
@@ -376,11 +460,27 @@ def _gemini_request(
     endpoint = "/v1beta/models/{}:generateContent".format(
         urllib.parse.quote(_canonical_banana_model(model), safe="")
     )
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    _write_diagnostic(
+        client,
+        "payload_ready",
+        model,
+        endpoint,
+        "input_count={} request_bytes={} encode_ms={} aspect={} image_size={}".format(
+            len(paths),
+            len(body),
+            int((time.monotonic() - encode_started) * 1000),
+            _gemini_aspect_ratio(width, height),
+            quality,
+        ),
+    )
     return _request_json(
         client,
         endpoint,
-        json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        body,
         "application/json",
+        model,
+        should_cancel,
     )
 
 
@@ -489,6 +589,20 @@ def _collect_outputs(value: Any) -> list[tuple[str, str]]:
     return outputs
 
 
+def _image_extension(data: bytes) -> str:
+    """Return the real container extension without decoding or recompressing."""
+
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return ".gif"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return ".png"
+
+
 def _generate_juaihub(
     client: _api.ImageApiClient,
     job: dict,
@@ -498,9 +612,17 @@ def _generate_juaihub(
     _api._check_cancel(should_cancel)
     model = str(job.get("model") or client.settings.get("model") or "").strip()
     paths, reference_ordinals, depth_ordinal = _input_bundle(job)
-    context = client._build_context(job, should_cancel)
+    scene_context = job.get("scene_context") or {}
+    raw_prompt = _api.composition_locked_prompt(
+        str(job.get("prompt") or ""),
+        bool(
+            str(job.get("scene_image") or "").strip()
+            and scene_context.get("preserve_composition")
+        ),
+        scene_context,
+    )
     prompt = _mapped_prompt(
-        str(context.get("$RAW_PROMPT") or context.get("$PROMPT") or "").strip(),
+        raw_prompt.strip(),
         bool(str(job.get("scene_image") or "").strip()),
         reference_ordinals,
         depth_ordinal,
@@ -508,6 +630,27 @@ def _generate_juaihub(
     width = int(job.get("width") or 1024)
     height = int(job.get("height") or 1024)
     count = max(1, int(job.get("count") or 1))
+    endpoint = (
+        "/v1beta/models/{}:generateContent".format(
+            urllib.parse.quote(_canonical_banana_model(model), safe="")
+        )
+        if model in BANANA_MODELS
+        else "/v1/images/edits-or-generations"
+    )
+    _write_diagnostic(
+        client,
+        "inputs_ready",
+        model,
+        endpoint,
+        "input_count={} input_bytes={} prompt_chars={} output={}x{} count={}".format(
+            len(paths),
+            sum(Path(path).stat().st_size for path in paths),
+            len(prompt),
+            width,
+            height,
+            count,
+        ),
+    )
     results: list[str] = []
     for index in range(count):
         _api._check_cancel(should_cancel)
@@ -528,6 +671,8 @@ def _generate_juaihub(
                     "/v1/images/edits",
                     body,
                     "multipart/form-data; boundary=" + boundary,
+                    model,
+                    should_cancel,
                 )
             else:
                 data = _request_json(
@@ -542,6 +687,8 @@ def _generate_juaihub(
                         str(job.get("quality") or "2K"),
                     ),
                     "application/json",
+                    model,
+                    should_cancel,
                 )
         else:
             data = _gemini_request(
@@ -552,6 +699,7 @@ def _generate_juaihub(
                 width,
                 height,
                 str(job.get("quality") or "2K"),
+                should_cancel,
             )
         outputs = _collect_outputs(data)
         if not outputs:
@@ -560,12 +708,21 @@ def _generate_juaihub(
         if kind == "base64":
             try:
                 normalized = "".join(value.partition(",")[2].split()) if value.startswith("data:") else "".join(value.split())
-                base64.b64decode(normalized, validate=True)
+                image_data = base64.b64decode(normalized, validate=True)
             except (ValueError, binascii.Error) as exc:
                 raise _api.ApiError("JuAIHub 返回了无效的 Base64 图片。") from exc
-            results.append(client._save_b64(value, len(results), job))
+            output_job = dict(job)
+            output_job["output_extension"] = _image_extension(image_data)
+            results.append(client._save_b64(value, len(results), output_job))
         else:
             results.append(client._download(value, len(results), should_cancel, job))
+        _write_diagnostic(
+            client,
+            "result_saved",
+            model,
+            endpoint,
+            "result_index={}".format(index + 1),
+        )
     if progress:
         progress(1.0, "生成完成")
     return results
@@ -589,7 +746,7 @@ if not getattr(_api.ImageApiClient.generate, "_zhire_juaihub_adapter", False):
                 if model in BANANA_MODELS
                 else "/v1/images/edits-or-generations"
             )
-            _write_route_diagnostic(self, model, endpoint)
+            _write_diagnostic(self, "route_selected", model, endpoint)
             return _generate_juaihub(self, job, progress, should_cancel)
         return _original_generate(self, job, progress, should_cancel)
 
