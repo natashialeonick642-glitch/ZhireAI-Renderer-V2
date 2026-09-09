@@ -1,0 +1,26 @@
+{
+  "provider": "custom",
+  "profile_name": "OpenAI-compatible Images",
+  "base_url": "https://your-api.example.com",
+  "endpoint": "/v1/images/generations",
+  "method": "POST",
+  "model": "your-image-model",
+  "auth_type": "bearer",
+  "api_key": "",
+  "api_key_env": "LUMASTAGE_API_KEY",
+  "api_key_header": "Authorization",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "request_template": {
+    "model": "$MODEL",
+    "prompt": "$PROMPT",
+    "n": "$COUNT",
+    "size": "$SIZE",
+    "scene_image": "$SCENE_IMAGE_DATA_URL",
+    "reference_images": "$REFERENCE_IMAGES_DATA_URLS"
+  },
+  "response_url_path": "data.*.url",
+  "response_base64_path": "data.*.b64_json",
+  "async_enabled": false
+}

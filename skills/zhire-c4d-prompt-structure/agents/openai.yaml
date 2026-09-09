@@ -1,0 +1,7 @@
+interface:
+  display_name: "挚热 C4D 提示词结构"
+  short_description: "为挚热 C4D 产品场景编写构图锁定的结构化图生图提示词"
+  default_prompt: "使用 $zhire-c4d-prompt-structure 为当前 C4D 产品场景整理可直接生成的提示词。"
+
+policy:
+  allow_implicit_invocation: true

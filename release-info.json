@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "project_name": "挚热AI渲染器 V2",
+  "repository": "ZhireAI-Renderer-V2",
+  "release": "0.1.0",
+  "plugin_version": "2.0.7",
+  "built_at": "2026-09-09",
+  "entry_point": "zhireAI/lumastage_ai.pyp",
+  "environment": {
+    "os": ["Windows 10 64-bit", "Windows 11 64-bit"],
+    "tested_cinema4d": "2025.3.3",
+    "compatible_cinema4d": ["2023", "2024", "2025", "2026"],
+    "python": "Cinema 4D bundled Python 3",
+    "external_python_packages": []
+  },
+  "data_policy": {
+    "contains_api_keys": false,
+    "contains_user_settings": false,
+    "contains_personal_user_paths": false,
+    "contains_reference_media": false,
+    "contains_generated_media": false,
+    "contains_projects": false,
+    "contains_logs_or_backups": false
+  },
+  "plugin_sha256": {
+    "lumastage_ai.pyp": "f2c3e6b4396d69169bfbbbab4568377adac60be7e02453a9561169f629356fb0",
+    "zz_juaihub_adapter.pyp": "ffd653b1c66f32a28b7b3a5b226329fe0d42046b41f443accc824689b9d921b1",
+    "lumastage/ui.py": "1a1c318b13ebeb6658656ad75ff7afab4286ff9d21b350985826decfdd0456a5",
+    "integrity.json": "5e8757e847bd4ea7abfa8ef102a95c9a790b824387d5b17ed107d7a6b3ff5caa"
+  },
+  "skill_sha256": {
+    "SKILL.md": "f725437286e41fd54a0c0b5aacb6ebb94b4bdd3bb5081bd635d6dad83da79523",
+    "agents/openai.yaml": "81aae429fc689fd5e1608aa59ead0e5d969b00c9a709930393d32269039f8f12",
+    "references/prompt-schema.md": "69723777ec203bdd8c0a273d15e88a26c4432400ad4ac85cbcd5ccb569d3a9b6"
+  }
+}

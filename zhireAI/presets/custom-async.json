@@ -1,0 +1,47 @@
+{
+  "profile_name": "Custom Async Task API",
+  "base_url": "https://your-api.example.com",
+  "endpoint": "/api/generate",
+  "method": "POST",
+  "model": "your-image-model",
+  "auth_type": "header",
+  "api_key": "",
+  "api_key_env": "LUMASTAGE_API_KEY",
+  "api_key_header": "X-API-Key",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "request_template": {
+    "model": "$MODEL",
+    "prompt": "$RAW_PROMPT",
+    "negative_prompt": "$NEGATIVE_PROMPT",
+    "width": "$WIDTH",
+    "height": "$HEIGHT",
+    "count": "$COUNT",
+    "scene": "$SCENE_IMAGE_BASE64",
+    "references": "$REFERENCE_IMAGES_BASE64",
+    "content": "$MULTIMODAL_CONTENT",
+    "scene_context": "$SCENE_CONTEXT"
+  },
+  "response_url_path": "",
+  "response_base64_path": "",
+  "async_enabled": true,
+  "task_id_path": "task.id",
+  "poll_endpoint": "/api/tasks/$TASK_ID",
+  "status_path": "task.status",
+  "success_values": [
+    "succeeded",
+    "completed",
+    "success"
+  ],
+  "failure_values": [
+    "failed",
+    "cancelled",
+    "canceled",
+    "error"
+  ],
+  "poll_interval_seconds": 2.0,
+  "poll_timeout_seconds": 600,
+  "poll_response_url_path": "task.outputs.*.url",
+  "poll_response_base64_path": "task.outputs.*.b64_json"
+}

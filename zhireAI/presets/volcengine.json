@@ -1,0 +1,32 @@
+{
+  "contract_revision": 2,
+  "provider": "volcengine",
+  "profile_name": "火山引擎方舟（仅图像）",
+  "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+  "endpoint": "/images/generations",
+  "model": "doubao-seedream-4-0-250828",
+  "models_endpoint": "/models",
+  "models_response_path": "data.*.id",
+  "image_upload_supported": false,
+  "video_upload_supported": false,
+  "animation_reference_mode": "none",
+  "auth_type": "bearer",
+  "request_template": {
+    "model": "$MODEL",
+    "prompt": "$PROMPT",
+    "image": "$ALL_INPUT_IMAGE_URLS",
+    "size": "$QUALITY",
+    "sequential_image_generation": "disabled",
+    "stream": false,
+    "response_format": "url",
+    "watermark": false
+  },
+  "response_url_path": "data.*.url",
+  "async_enabled": false,
+  "repeat_per_count": true,
+  "video_endpoint": "",
+  "video_model": "",
+  "seedance_models": [],
+  "supports_seedance_animation": false,
+  "seedance_unavailable_reason": "目前火山引擎和阿里百炼暂不支持动画功能。"
+}

@@ -1,0 +1,31 @@
+{
+  "contract_revision": 2,
+  "provider": "aliyun_bailian",
+  "profile_name": "阿里云百炼（仅图像）",
+  "base_url": "https://dashscope.aliyuncs.com",
+  "endpoint": "/api/v1/services/aigc/multimodal-generation/generation",
+  "model": "qwen-image-2.0-pro",
+  "models_endpoint": "/api/v1/models",
+  "models_response_path": "output.models.*.model",
+  "image_upload_supported": false,
+  "video_upload_supported": false,
+  "animation_reference_mode": "none",
+  "auth_type": "bearer",
+  "request_template": {
+    "model": "$MODEL",
+    "input": {
+      "messages": [{"role": "user", "content": "$DASHSCOPE_CONTENT"}]
+    },
+    "parameters": {
+      "n": "$COUNT",
+      "size": "$SIZE_STAR",
+      "prompt_extend": true,
+      "watermark": false
+    }
+  },
+  "response_url_path": "output.choices.*.message.content.*.image",
+  "video_endpoint": "",
+  "video_model": "",
+  "seedance_models": [],
+  "supports_seedance_animation": false
+}

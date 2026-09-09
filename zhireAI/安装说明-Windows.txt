@@ -1,0 +1,37 @@
+挚热AI渲染器 V2.0.7 — Windows 安装说明
+
+适用范围
+- 正式兼容目标：Windows 10/11 + Cinema 4D R23、S24、R25、S26、2023、2024、2025、2026。
+- 已完成实际运行验证：Windows + Cinema 4D 2023；其他目标版本完成 R23 Python 3.7 语法与接口兼容检查。
+- 未来尚未发布或尚未验收的 Cinema 4D 版本，需要在发布后再确认兼容性。
+- 插件为 Python 3 源码插件，不包含第三方可执行程序。
+
+安装步骤（推荐）
+1. 关闭 Cinema 4D。
+2. 解压本安装包，确保可以看到完整的 zhireAI 文件夹。
+3. 在“文档”目录中新建一个插件总目录，例如：
+   C:\Users\你的用户名\Documents\Cinema4D-Plugins
+4. 把完整的 zhireAI 文件夹复制到该目录中，最终应为：
+   Cinema4D-Plugins\zhireAI\lumastage_ai.pyp
+5. 打开 Cinema 4D，进入“编辑 → 首选项 → 插件”。
+6. 点击“添加文件夹”，选择 Cinema4D-Plugins 这个父目录并确认启用。
+7. 完全关闭并重新打开 Cinema 4D。
+8. 在“扩展”菜单中打开“挚热AI渲染器 V2”。
+
+API 设置
+- 安装包不包含任何人的 API Key。
+- 每位用户需要在插件“设置”中填写自己的挚热 API Key。
+- 插件设置页仅保留挚热 API（JuAIHub），地址默认使用 https://api.juaihub.cn。
+- Banana 2 使用实时可用的 gemini-3.1-flash-image-preview；同时提供 gemini-3-pro-image-preview 与 GPT Image 2/2.5 图像模型。
+
+升级旧版本
+- 先关闭 Cinema 4D，再用本包中的 zhireAI 文件夹覆盖旧插件文件夹。
+- 用户历史记录和 API 设置保存在 Cinema 4D 首选项目录，不会因覆盖插件代码而删除。
+
+无法显示插件时
+- 检查是否多套了一层文件夹，入口必须是 zhireAI\lumastage_ai.pyp。
+- 检查“首选项 → 插件”中的父目录是否启用。
+- 重启 Cinema 4D 后再检查“扩展”菜单。
+
+版权：挚热AI渲染器
+公众号：挚热

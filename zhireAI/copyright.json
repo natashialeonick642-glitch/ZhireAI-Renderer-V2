@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "product_id": "zhireai.c4d.renderer",
+  "product_name": "挚热AI渲染器",
+  "brand_folder": "zhireAI",
+  "copyright": "Copyright (c) 2026 挚热AI渲染器",
+  "official_channel": "公众号“挚热”",
+  "license": "LICENSE_zh-CN.txt",
+  "privacy": "版权与完整性校验仅在本地进行，不上传 API Key、提示词、图片、场景或设备标识。"
+}
