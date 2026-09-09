@@ -6,6 +6,14 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 
+DEFAULT_PROMPT_DRAFT = (
+    "[[图1]]此图为本产品的渲染图，参考产品质感、细节，保留锅柄把手上的logo，"
+    "注意锅盖的材质是由玻璃和不锈钢组成，锅身需要有精修感饱满的光影"
+    "\n\n"
+    "[[图2]]参考氛围，质感补充，但不要参考其产品细节，因为这是另外一款产品"
+)
+
+
 def _history_int(value: Any, fallback: int) -> int:
     try:
         return int(value)
@@ -40,7 +48,7 @@ class StudioState:
     animation_frames: list[str] = field(default_factory=list)
     references: list[str] = field(default_factory=list)
     selected_reference: int = -1
-    prompt: str = ""
+    prompt: str = DEFAULT_PROMPT_DRAFT
     options: GenerationOptions = field(default_factory=GenerationOptions)
     current_result: str = ""
     selected_history_id: str = ""
