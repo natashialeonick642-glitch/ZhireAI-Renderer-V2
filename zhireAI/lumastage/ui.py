@@ -3069,14 +3069,14 @@ class StudioDialog(c4d.gui.GeDialog):
 
     @staticmethod
     def _prompt_height_for_rows(rows: int) -> int:
-        # Fixed visual height; the native editor still accepts unlimited text
-        # and real newline characters beyond the ten visible rows.
-        return 10 * 18 + 10
+        # C4D applies display scaling to native gadget heights. 110 logical
+        # pixels is approximately ten visible rows on the supported layouts.
+        return 110
 
     def _build_prompt_editor(self) -> None:
         self.AddMultiLineEditText(
             Id.PROMPT,
-            c4d.BFH_SCALEFIT,
+            c4d.BFH_SCALEFIT | c4d.BFV_FIXED,
             0,
             self.prompt_height,
             style=PROMPT_EDITOR_STYLE,
@@ -3284,10 +3284,10 @@ class StudioDialog(c4d.gui.GeDialog):
             return
         self.prompt_logical_text = text
         self.last_prompt_text = displayed_text
-        # Rewriting SetString inside every keyboard event makes C4D 2025 reset
-        # the caret during IME and Backspace handling. Reflow after a short idle
-        # interval instead; paste still wraps almost immediately.
-        self.prompt_rewrap_deadline = time.monotonic() + 0.20
+        # Never rewrite the native editor while the user is typing. C4D resets
+        # the caret when SetString is called from an edit event, especially
+        # after Enter, Backspace, or Chinese IME composition.
+        self.prompt_rewrap_deadline = 0.0
         at_position = inserted_mention_position(previous, text)
         if at_position < 0 or self.mention_dialog_open:
             return
@@ -5208,21 +5208,6 @@ class StudioDialog(c4d.gui.GeDialog):
         if current_prompt != self.last_prompt_text:
             self._handle_prompt_change(self.last_prompt_text)
         self._update_responsive_layout()
-        if (
-            self.prompt_rewrap_deadline > 0.0
-            and time.monotonic() >= self.prompt_rewrap_deadline
-        ):
-            self._rewrap_prompt_editor()
-        pending_cursor = self.pending_prompt_cursor
-        self.pending_prompt_cursor = None
-        if (
-            pending_cursor is not None
-            and self.prompt_has_focus
-            and self.GetString(Id.PROMPT) == pending_cursor[0]
-        ):
-            current_native = self._prompt_cursor_offset()
-            if pending_cursor[1] > 0 and current_native == 0:
-                self._restore_prompt_cursor(pending_cursor[0], pending_cursor[1])
         if self.cancelled_workers:
             self.cancelled_workers = [
                 worker for worker in self.cancelled_workers if not worker.snapshot()[2]

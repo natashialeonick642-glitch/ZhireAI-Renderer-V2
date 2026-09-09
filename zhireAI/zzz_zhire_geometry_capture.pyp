@@ -21,10 +21,10 @@ from lumastage.c4d_capture import (
 )
 
 
-MAX_PROMPT_ROWS = 6
-# C4D scales native gadget heights again on this high-DPI layout. A logical
-# height of 64 renders as roughly six visible text rows on the user's monitor.
-MAX_PROMPT_HEIGHT = 64
+MAX_PROMPT_ROWS = 10
+# C4D scales native gadget heights again on high-DPI layouts. A logical height
+# of 110 renders as approximately ten visible rows while keeping text unlimited.
+MAX_PROMPT_HEIGHT = 110
 DEPTH_TRACE_MAX_EDGE = 240
 # AI reference canvas profiles. The selected image model's conventional 2K
 # canvas is used for both the white-film geometry and the Z-depth image; the
@@ -37,10 +37,7 @@ MODEL_2K_REFERENCE_EDGE = {
     "gpt-image-2.5-sunburst": 2048,
 }
 DEFAULT_2K_REFERENCE_EDGE = 2048
-PROMPT_EDITOR_STYLE = (
-    getattr(c4d, "DR_MULTILINE_WORDWRAP", 256)
-    | getattr(c4d, "DR_MULTILINE_NO_SCROLLBARS", 8192)
-)
+PROMPT_EDITOR_STYLE = getattr(c4d, "DR_MULTILINE_WORDWRAP", 256)
 GEOMETRY_COLORS = (
     c4d.Vector(0.60),
     c4d.Vector(0.64),
@@ -1380,7 +1377,7 @@ def _fixed_prompt_editor(self) -> None:
     self.prompt_height = max(28, min(MAX_PROMPT_HEIGHT, int(self.prompt_height)))
     self.AddMultiLineEditText(
         _ui.Id.PROMPT,
-        c4d.BFH_SCALEFIT,
+        c4d.BFH_SCALEFIT | c4d.BFV_FIXED,
         0,
         self.prompt_height,
         style=PROMPT_EDITOR_STYLE,
@@ -1614,85 +1611,6 @@ _ui.ReferenceArea._geometry = _reference_geometry_with_depth
 _ui.ReferenceArea.DrawMsg = _draw_reference_area_with_depth
 _ui.ReferenceArea.InputEvent = _reference_input_with_depth
 _ui.StudioDialog.depth_open_requested = _depth_open_requested
-
-
-def _limited_prompt_height(rows: int) -> int:
-    return max(28, min(MAX_PROMPT_HEIGHT, int(rows) * 18 + 10))
-
-
-_ui.StudioDialog._prompt_height_for_rows = staticmethod(_limited_prompt_height)
-_original_apply_prompt_rows = _ui.StudioDialog._apply_prompt_rows
-
-
-def _limited_apply_prompt_rows(self, rows: int) -> None:
-    rows = max(1, min(MAX_PROMPT_ROWS, int(rows)))
-    if getattr(self, "_prompt_rows_update_active", False):
-        return
-    self._prompt_rows_update_active = True
-    previous = int(getattr(self, "prompt_rows", 0))
-    try:
-        # Native C4D number gadgets can briefly expose an out-of-range value
-        # before Command() reaches Python. Normalize it before rebuilding.
-        self.SetInt32(_ui.Id.PROMPT_ROWS, rows, 1, MAX_PROMPT_ROWS, 1)
-        _original_apply_prompt_rows(self, rows)
-        # The prompt editor is rebuilt inside its own group. Refresh the
-        # enclosing scroll layout as well, otherwise C4D can keep stale hit
-        # bounds for the spinner and the lower controls.
-        if rows != previous:
-            try:
-                self.LayoutChanged(_ui.Id.GROUP_CONTROLS)
-            except (AttributeError, TypeError, RuntimeError):
-                pass
-    finally:
-        # Always write the clamped value back. At the upper/lower bound the
-        # original method legitimately does nothing, but the native gadget
-        # may otherwise keep showing the rejected value.
-        try:
-            self.SetInt32(_ui.Id.PROMPT_ROWS, rows, 1, MAX_PROMPT_ROWS, 1)
-        except (AttributeError, TypeError, RuntimeError):
-            pass
-        self._prompt_rows_update_active = False
-
-
-_ui.StudioDialog._apply_prompt_rows = _limited_apply_prompt_rows
-
-
-_original_studio_command = _ui.StudioDialog.Command
-
-
-def _prompt_rows_command_guard(self, item_id: int, message: c4d.BaseContainer) -> bool:
-    if item_id == _ui.Id.PROMPT_ROWS:
-        # Read the native gadget after its arrow/text event, then route it
-        # through the bounded handler instead of allowing the original 1-13
-        # range to leak into the visible control.
-        try:
-            value = self.GetInt32(_ui.Id.PROMPT_ROWS)
-        except (AttributeError, TypeError, RuntimeError, ValueError):
-            value = getattr(self, "prompt_rows", 1)
-        self._apply_prompt_rows(value)
-        return True
-    return _original_studio_command(self, item_id, message)
-
-
-_ui.StudioDialog.Command = _prompt_rows_command_guard
-
-
-_original_init_values = _ui.StudioDialog.InitValues
-
-
-def _limited_init_values(self) -> bool:
-    result = _original_init_values(self)
-    self.SetInt32(
-        _ui.Id.PROMPT_ROWS,
-        max(1, min(MAX_PROMPT_ROWS, int(self.prompt_rows))),
-        1,
-        MAX_PROMPT_ROWS,
-        1,
-    )
-    return result
-
-
-_ui.StudioDialog.InitValues = _limited_init_values
 
 
 # Keep the history list usable while allowing the parent ScrollGroup to take

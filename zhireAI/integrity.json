@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "product_id": "zhireai.c4d.renderer",
-  "version": "2.0.7-default-prompt-20260909",
+  "version": "2.0.7-native-prompt-editor-20260909",
   "algorithm": "SHA-256",
   "sha256": {
     "安装说明-Windows.txt": "dd04b802c6f1472e1e01b22a91b31c4032e2b0edcb63ea30e4f45abedbe2e106",
@@ -18,7 +18,7 @@
     "lumastage/settings_dialog.py": "c06b9507c1936c257be229f9bc5001328f5a5faa19c15c4c5953b11446dcafd2",
     "lumastage/state.py": "2144ebded4321db6c1d3e19e64d37e18ff2c17e42f56cb008a4b2cce1495ddf8",
     "lumastage/storage.py": "37e9f9529740d32754ebc45fcd5672548214181bb32d71883e2c7130c4efca8a",
-    "lumastage/ui.py": "1a1c318b13ebeb6658656ad75ff7afab4286ff9d21b350985826decfdd0456a5",
+    "lumastage/ui.py": "203147546c0b5b75fa51a315cf6ec8c3e579477e576caab5f6f33a2e3b649c49",
     "lumastage/worker.py": "922dace08953a6242f3e159673a1f6c92f1097e6cdb0ebb2fb8ed0cee40187b7",
     "presets/aliyun-bailian.json": "37f9285834c2b6ae9e542db11a82240b14936d7476418b9b352de15ca4b7491f",
     "presets/apimart.json": "ec8e67a347abf07b89d43060c2615afc75ade44a2e379bf56593037fe9c7e633",
@@ -30,6 +30,6 @@
     "zz_juaihub_adapter.pyp": "ffd653b1c66f32a28b7b3a5b226329fe0d42046b41f443accc824689b9d921b1",
     "prompt_skills/不锈钢质感优化.md": "27f4df545cf87223fb616da3882babe0edc5061920e98ba87532ea138e1cdfc6",
     "prompt_skills/木质产品真实摄影优化V20.md": "660d2b04b231b516976a25f088d25497f86983c45854de5a9caa2d198c57b7a2",
-    "zzz_zhire_geometry_capture.pyp": "5e5e7ed788e58c3284674e220f6dad9a7672ff48bc76d1434ced0887b9b97288"
+    "zzz_zhire_geometry_capture.pyp": "1697c0c64fdf8ebdb63f1a5ff607a21997a3e8878cf0a58eb04cf3b9eb20a640"
   }
 }
