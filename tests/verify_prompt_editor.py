@@ -90,4 +90,48 @@ for before, after in (
     assert state.last_prompt_text == after
     assert state.prompt_rewrap_deadline == 0.0
 
+
+class FakeHistoryState:
+    workflow = "image"
+    prompt = ""
+    current_result = ""
+    scene_image = ""
+    references = []
+    animation_frames = []
+
+    def restore_history_snapshot(self, _item: dict) -> None:
+        pass
+
+
+class FakeHistoryDialog:
+    def __init__(self) -> None:
+        item = {"id": "old-pro", "model": "nano-banana-pro", "provider": "custom"}
+        self.history = type("History", (), {"find": lambda _self, _item_id: item})()
+        self.state = FakeHistoryState()
+        self.settings = {"provider": "custom", "model": "gemini-3.1-flash-image-preview"}
+        self.preview_dismissed = False
+
+    def _populate_parameter_controls(self) -> None:
+        pass
+
+    def _set_prompt_text(self, _prompt: str) -> None:
+        pass
+
+    def _refresh_reference_controls(self) -> None:
+        pass
+
+    def _refresh_history(self) -> None:
+        pass
+
+    def _refresh_preview(self) -> None:
+        pass
+
+    def _set_status(self, _message: str, _progress: float) -> None:
+        pass
+
+
+history_dialog = FakeHistoryDialog()
+patch._ui.StudioDialog.history_selected(history_dialog, "old-pro")
+assert history_dialog.settings["model"] == "gemini-3-pro-image-preview"
+
 print("PROMPT_EDITOR_CHECK_OK", len(plugin_scripts))

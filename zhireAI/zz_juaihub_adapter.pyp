@@ -603,6 +603,25 @@ def _image_extension(data: bytes) -> str:
     return ".png"
 
 
+def _save_image_bytes(
+    client: _api.ImageApiClient,
+    data: bytes,
+    index: int,
+) -> str:
+    """Save the provider's original bytes with their real container suffix."""
+
+    if client.output_dir is None:
+        raise _api.ApiError("没有设置图片输出目录。")
+    extension = _image_extension(data)
+    path = client.output_dir / "lumastage_{:03d}_{}{}".format(
+        index + 1,
+        int(time.time() * 1000),
+        extension,
+    )
+    path.write_bytes(data)
+    return str(path)
+
+
 def _generate_juaihub(
     client: _api.ImageApiClient,
     job: dict,
@@ -711,9 +730,7 @@ def _generate_juaihub(
                 image_data = base64.b64decode(normalized, validate=True)
             except (ValueError, binascii.Error) as exc:
                 raise _api.ApiError("JuAIHub 返回了无效的 Base64 图片。") from exc
-            output_job = dict(job)
-            output_job["output_extension"] = _image_extension(image_data)
-            results.append(client._save_b64(value, len(results), output_job))
+            results.append(_save_image_bytes(client, image_data, len(results)))
         else:
             results.append(client._download(value, len(results), should_cancel, job))
         _write_diagnostic(
@@ -721,7 +738,9 @@ def _generate_juaihub(
             "result_saved",
             model,
             endpoint,
-            "result_index={}".format(index + 1),
+            "result_index={} extension={}".format(
+                index + 1, Path(results[-1]).suffix.lower()
+            ),
         )
     if progress:
         progress(1.0, "生成完成")

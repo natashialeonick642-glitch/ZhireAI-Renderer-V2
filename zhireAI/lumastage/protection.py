@@ -15,7 +15,7 @@ from typing import Tuple, Union
 
 
 PRODUCT_ID = "zhireai.c4d.renderer"
-EXPECTED_MANIFEST_SHA256 = "8ac92e8ea7563affcc665c936e8977e834d3484a7d7e86697912e80a94cc2907"
+EXPECTED_MANIFEST_SHA256 = "32b9d8699902d521c8fe399f6eb2639bf8e568166c39d24e70b4b22e2257d51d"
 
 
 def _sha256(path: Path) -> str:

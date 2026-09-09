@@ -45,6 +45,7 @@ from .prompt_ai import PromptGenerator, skill_options
 from .providers import (
     ATLAS_IMAGE_MODELS,
     JUAIHUB_IMAGE_MODELS,
+    JUAIHUB_MODEL_ALIASES,
     PROVIDER_LABELS,
     is_compatible_image_model,
     is_compatible_seedance_model,
@@ -91,6 +92,8 @@ IMAGE_EXTENSIONS = {
 }
 PORTABLE_API_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".m4v", ".webm", ".avi", ".mkv"}
+BANANA_PRO_REFERENCE_MAX_EDGE = 768
+BANANA_PRO_REFERENCE_MAX_BYTES = 900 * 1024
 # Show a larger history window so the outer dialog scroll container handles
 # most navigation instead of competing with a short inner list.
 HISTORY_VISIBLE_ROWS = 15
@@ -379,6 +382,63 @@ def _portable_api_image(path: str, output_dir: Path) -> str:
         or verified.GetBh() != bitmap.GetBh()
     ):
         raise ValueError("输入图像转换后的尺寸校验失败。")
+    return str(target)
+
+
+def _banana_pro_reference_image(path: str, output_dir: Path) -> str:
+    """Create a compact PNG used only for the Pro request payload."""
+
+    source_path = Path(str(path or ""))
+    bitmap = _load_bitmap(str(source_path))
+    if bitmap is None or bitmap.GetBw() <= 0 or bitmap.GetBh() <= 0:
+        raise ValueError("无法读取 Banana Pro 参考图：{}".format(source_path.name))
+    width = int(bitmap.GetBw())
+    height = int(bitmap.GetBh())
+    try:
+        source_size = source_path.stat().st_size
+        source_stamp = int(
+            getattr(source_path.stat(), "st_mtime_ns", source_path.stat().st_mtime * 1e9)
+        )
+    except OSError as exc:
+        raise ValueError("无法读取 Banana Pro 参考图信息：{}".format(source_path.name)) from exc
+    if max(width, height) <= BANANA_PRO_REFERENCE_MAX_EDGE and source_size <= BANANA_PRO_REFERENCE_MAX_BYTES:
+        return str(source_path)
+
+    scale = min(1.0, BANANA_PRO_REFERENCE_MAX_EDGE / float(max(width, height)))
+    target_width = max(1, int(round(width * scale)))
+    target_height = max(1, int(round(height * scale)))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    target = output_dir / "{}_banana_pro_{}x{}_{}.png".format(
+        source_path.stem,
+        target_width,
+        target_height,
+        source_stamp,
+    )
+    if target.is_file():
+        verified = _load_bitmap(str(target))
+        if (
+            verified is not None
+            and int(verified.GetBw()) == target_width
+            and int(verified.GetBh()) == target_height
+        ):
+            return str(target)
+
+    prepared = c4d.bitmaps.BaseBitmap()
+    if prepared.Init(target_width, target_height, 24) != c4d.IMAGERESULT_OK:
+        raise ValueError("无法创建 Banana Pro 参考图画布。")
+    bitmap.ScaleIt(prepared, 256, True, True)
+    saved = prepared.Save(
+        str(target), c4d.FILTER_PNG, c4d.BaseContainer(), c4d.SAVEBIT_NONE
+    )
+    if saved != c4d.IMAGERESULT_OK or not target.is_file():
+        raise ValueError("无法保存 Banana Pro 轻量参考图：{}".format(source_path.name))
+    verified = _load_bitmap(str(target))
+    if (
+        verified is None
+        or int(verified.GetBw()) != target_width
+        or int(verified.GetBh()) != target_height
+    ):
+        raise ValueError("Banana Pro 轻量参考图尺寸校验失败。")
     return str(target)
 
 
@@ -4727,10 +4787,24 @@ class StudioDialog(c4d.gui.GeDialog):
                     )
                 scene_context["capture_size"] = [source_width, source_height]
                 scene_context["capture_aspect"] = round(source_ratio, 6)
+        job_references = list(self.state.references)
+        selected_model = str(self.settings.get("model") or "").strip()
+        if self.state.workflow == "image":
+            selected_model = JUAIHUB_MODEL_ALIASES.get(
+                selected_model.lower(), selected_model
+            )
+        if self.state.workflow == "image" and selected_model == "gemini-3-pro-image-preview":
+            for reference_index in referenced_indices(self.state.prompt):
+                if 1 <= reference_index <= len(job_references):
+                    job_references[reference_index - 1] = _banana_pro_reference_image(
+                        job_references[reference_index - 1], self.capture_dir
+                    )
         return {
             "workflow": self.state.workflow,
-            "model": self.settings.get(
-                "video_model" if self.state.workflow == "animation" else "model", ""
+            "model": (
+                self.settings.get("video_model", "")
+                if self.state.workflow == "animation"
+                else selected_model
             ),
             "prompt": self.state.prompt,
             "negative_prompt": self.state.options.negative_prompt,
@@ -4740,7 +4814,7 @@ class StudioDialog(c4d.gui.GeDialog):
             "scene_image": (
                 "" if force_animation_frames else self.state.scene_image
             ),
-            "references": list(self.state.references),
+            "references": job_references,
             "animation_frames": list(self.state.animation_frames),
             "scene_context": scene_context,
             "aspect": aspect,
@@ -4900,6 +4974,10 @@ class StudioDialog(c4d.gui.GeDialog):
                 self.state.scene_image = source_movie
         self.preview_dismissed = False
         history_model = str(item.get("model") or "").strip()
+        if self.state.workflow == "image":
+            history_model = JUAIHUB_MODEL_ALIASES.get(
+                history_model.lower(), history_model
+            )
         history_provider = str(item.get("provider") or "").strip()
         active_provider = str(self.settings.get("provider") or "").strip()
         same_provider = not history_provider or history_provider == active_provider

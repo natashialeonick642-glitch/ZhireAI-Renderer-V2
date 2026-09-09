@@ -175,8 +175,10 @@ def main() -> None:
                 None,
                 None,
             )
-            assert generated == [str(output_dir / "result.png")]
-            assert client.saved_extension == ".jpg"
+            assert len(generated) == 1
+            generated_path = Path(generated[0])
+            assert generated_path.suffix == ".jpg"
+            assert generated_path.read_bytes() == b"\xff\xd8\xffresult-image"
 
             adapter._request_json = tested_request_json
             error = urllib.error.HTTPError(
